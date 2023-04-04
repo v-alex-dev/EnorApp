@@ -1,11 +1,10 @@
-from flask import Flask, jsonify, Response
+import traceback
+
+from flask import Flask, jsonify
+from teacher.model import TeacherDb
 import psycopg2
 
-#import model
-from models.teacher import Teacher
-
 app = Flask(__name__)
-
 conn = psycopg2.connect(
     host="localhost",
     database="enorapp",
@@ -19,14 +18,32 @@ def home():
     return "hello world"
 
 
-@app.route('/teacher', methods=['GET'])
-def get_teacher():
-    cur = conn.cursor()
-    cur.execute("SELECT *"
-                "FROM t_teacher_tea")
+@app.route('/all_teacher', methods=['GET'])
+def get_all_teachers():
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM t_teacher_tea")
 
-    teachers = cur.fetchall()
-    cur.close()
+        rows = cur.fetchall()
+        teachers = [TeacherDb(row).to_dict() for row in rows]
+
+        return jsonify(teachers)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)})
 
 
-    return Response(jsonify(teachers))
+@app.route('/teacher_by_id/<int:id>', methods=['GET'])
+def get_teacher_by_id(id):
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * "
+                    "FROM t_teacher_tea "
+                    "WHERE tea_id = %s", (id,))
+        rows = cur.fetchall()
+        teacher = [TeacherDb(row).to_dict() for row in rows]
+
+        return jsonify(teacher)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)})
